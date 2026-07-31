@@ -24,17 +24,19 @@ if ! command -v docker >/dev/null 2>&1; then
   exit 1
 fi
 
-read -r -p "Source log directory: " SOURCE_LOG_DIR
+# The script itself may be received through stdin (curl | bash), so prompts
+# must use the controlling terminal instead of stdin.
+read -r -p "Source log directory: " SOURCE_LOG_DIR </dev/tty
 if [[ -z "$SOURCE_LOG_DIR" || ! -r "$SOURCE_LOG_DIR/current" ]]; then
   echo "The directory must contain a readable current log file." >&2
   exit 1
 fi
-read -r -p "Ingestion username: " INGEST_USERNAME
+read -r -p "Ingestion username: " INGEST_USERNAME </dev/tty
 if [[ -z "$INGEST_USERNAME" ]]; then
   echo "Username cannot be empty." >&2
   exit 1
 fi
-read -r -s -p "Ingestion password: " INGEST_PASSWORD
+read -r -s -p "Ingestion password: " INGEST_PASSWORD </dev/tty
 echo
 if [[ -z "$INGEST_PASSWORD" ]]; then
   echo "Password cannot be empty." >&2
