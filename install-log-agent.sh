@@ -35,13 +35,35 @@ detect_source_log_dir() {
   return 1
 }
 
-if ! SOURCE_LOG_DIR="$(detect_source_log_dir)"; then
-  echo "Could not find a mounted directory with a readable current log file." >&2
+detect_container_log_file() {
+  docker exec remnanode sh -c '
+    for candidate in /var/log/current /var/log/*/current /var/log/*/*/current; do
+      if [ -f "$candidate" ] && [ -r "$candidate" ]; then
+        printf "%s\\n" "$candidate"
+        exit 0
+      fi
+    done
+    exit 1
+  '
+}
+
+SOURCE_LOG_DIR=""
+LOG_FILE=""
+RUNTIME_ARGS=()
+if SOURCE_LOG_DIR="$(detect_source_log_dir)"; then
+  LOG_FILE="/var/log/source/current"
+  RUNTIME_ARGS=(-v "$SOURCE_LOG_DIR:/var/log/source:ro")
+  echo "Detected source log directory: ${SOURCE_LOG_DIR}"
+elif CONTAINER_LOG_FILE="$(detect_container_log_file)"; then
+  LOG_FILE="/proc/1/root${CONTAINER_LOG_FILE}"
+  RUNTIME_ARGS=(--pid=container:remnanode)
+  echo "Using the running container's process namespace to read its log."
+else
+  echo "Could not find a readable current log file in the running container." >&2
   exit 1
 fi
 # The script itself may be received through stdin (curl | bash), so prompts
 # must use the controlling terminal instead of stdin.
-echo "Detected source log directory: ${SOURCE_LOG_DIR}"
 read -r -p "Node name: " NODE_NAME </dev/tty
 if [[ -z "$NODE_NAME" ]]; then
   echo "Node name cannot be empty." >&2
@@ -67,6 +89,7 @@ INGEST_URL=${INGEST_URL}
 INGEST_PATH=${INGEST_PATH}
 INGEST_USERNAME=${INGEST_USERNAME}
 INGEST_PASSWORD=${INGEST_PASSWORD}
+LOG_FILE=${LOG_FILE}
 EOF
 chmod 0600 "$ENV_PATH"
 
@@ -75,7 +98,7 @@ sources:
   node_current:
     type: file
     include:
-      - /var/log/source/current
+      - "${LOG_FILE}"
     read_from: end
 transforms:
   label_records:
@@ -109,7 +132,7 @@ docker rm -f "$AGENT_NAME" >/dev/null 2>&1 || true
 docker run -d --name "$AGENT_NAME" --restart unless-stopped \
   --env-file "$ENV_PATH" \
   -v "$CONFIG_PATH:/etc/vector/vector.yaml:ro" \
-  -v "$SOURCE_LOG_DIR:/var/log/source:ro" \
+  "${RUNTIME_ARGS[@]}" \
   timberio/vector:0.39.0-alpine \
   --config /etc/vector/vector.yaml --require-healthy
 

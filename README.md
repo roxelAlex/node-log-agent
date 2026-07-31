@@ -11,10 +11,11 @@ Run on the node as root:
 curl -fsSL https://raw.githubusercontent.com/roxelAlex/node-log-agent/main/install-log-agent.sh | bash
 ```
 
-The installer detects the mounted source log automatically, then asks only for
-the node name, ingestion username, and password. The password is entered
-without echoing and stored in `/etc/node-log-agent/agent.env` with owner-only
-permissions.
+The installer detects the log automatically. If it is not mounted on the host,
+the agent reads it through the running container's process namespace; no Docker
+socket is mounted. It then asks only for the node name, ingestion username, and
+password. The password is entered without echoing and stored in
+`/etc/node-log-agent/agent.env` with owner-only permissions.
 
 It creates a `node-log-agent` container and leaves the application container
 unchanged. Re-running the command updates only that agent.
