@@ -31,7 +31,7 @@ detect_source_log_dir() {
       printf '%s\n' "$source_dir"
       return 0
     fi
-  done < <(docker inspect remnanode --format '{{range .Mounts}}{{printf "%s|%s\\n" .Source .Destination}}{{end}}')
+  done < <(docker inspect remnanode --format '{{range .Mounts}}{{printf "%s|%s\n" .Source .Destination}}{{end}}')
   return 1
 }
 
