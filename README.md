@@ -8,12 +8,13 @@ central endpoint.
 Run on the node as root:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/roxelAlex/node-log-agent/main/install-log-agent.sh | sudo bash -s -- NL1
+curl -fsSL https://raw.githubusercontent.com/roxelAlex/node-log-agent/main/install-log-agent.sh | sudo bash
 ```
 
 The installer detects the mounted source log automatically, then asks only for
-the ingestion username and password. The password is entered without echoing
-and stored in `/etc/node-log-agent/agent.env` with owner-only permissions.
+the node name, ingestion username, and password. The password is entered
+without echoing and stored in `/etc/node-log-agent/agent.env` with owner-only
+permissions.
 
 It creates a `node-log-agent` container and leaves the application container
 unchanged. Re-running the command updates only that agent.

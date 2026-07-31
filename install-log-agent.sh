@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Install or update a protected log-forwarding agent on one node.
-# Usage: curl -fsSL <raw-url> | sudo bash -s -- <node-name>
+# Usage: curl -fsSL <raw-url> | sudo bash
 set -Eeuo pipefail
 
-readonly NODE_NAME="${1:-}"
+NODE_NAME=""
 readonly AGENT_NAME="node-log-agent"
 readonly CONFIG_DIR="/etc/node-log-agent"
 readonly CONFIG_PATH="${CONFIG_DIR}/vector.yaml"
@@ -11,10 +11,6 @@ readonly ENV_PATH="${CONFIG_DIR}/agent.env"
 readonly INGEST_URL="${INGEST_URL:-https://cabinet.roxelalex.xyz}"
 readonly INGEST_PATH="${INGEST_PATH:-/node-logs/loki/api/v1/push}"
 
-if [[ -z "$NODE_NAME" ]]; then
-  echo "Usage: sudo $0 <node-name>" >&2
-  exit 64
-fi
 if [[ $EUID -ne 0 ]]; then
   echo "Run this script as root (sudo)." >&2
   exit 1
@@ -46,6 +42,11 @@ fi
 # The script itself may be received through stdin (curl | bash), so prompts
 # must use the controlling terminal instead of stdin.
 echo "Detected source log directory: ${SOURCE_LOG_DIR}"
+read -r -p "Node name: " NODE_NAME </dev/tty
+if [[ -z "$NODE_NAME" ]]; then
+  echo "Node name cannot be empty." >&2
+  exit 1
+fi
 read -r -p "Ingestion username: " INGEST_USERNAME </dev/tty
 if [[ -z "$INGEST_USERNAME" ]]; then
   echo "Username cannot be empty." >&2
