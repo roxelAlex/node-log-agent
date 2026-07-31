@@ -23,14 +23,29 @@ if ! command -v docker >/dev/null 2>&1; then
   echo "Docker is required." >&2
   exit 1
 fi
-
-# The script itself may be received through stdin (curl | bash), so prompts
-# must use the controlling terminal instead of stdin.
-read -r -p "Source log directory: " SOURCE_LOG_DIR </dev/tty
-if [[ -z "$SOURCE_LOG_DIR" || ! -r "$SOURCE_LOG_DIR/current" ]]; then
-  echo "The directory must contain a readable current log file." >&2
+if ! docker inspect remnanode >/dev/null 2>&1; then
+  echo "Container remnanode was not found." >&2
   exit 1
 fi
+
+detect_source_log_dir() {
+  local source_dir container_dir
+  while IFS='|' read -r source_dir container_dir; do
+    if [[ -r "$source_dir/current" ]] && docker exec remnanode test -r "$container_dir/current"; then
+      printf '%s\n' "$source_dir"
+      return 0
+    fi
+  done < <(docker inspect remnanode --format '{{range .Mounts}}{{printf "%s|%s\\n" .Source .Destination}}{{end}}')
+  return 1
+}
+
+if ! SOURCE_LOG_DIR="$(detect_source_log_dir)"; then
+  echo "Could not find a mounted directory with a readable current log file." >&2
+  exit 1
+fi
+# The script itself may be received through stdin (curl | bash), so prompts
+# must use the controlling terminal instead of stdin.
+echo "Detected source log directory: ${SOURCE_LOG_DIR}"
 read -r -p "Ingestion username: " INGEST_USERNAME </dev/tty
 if [[ -z "$INGEST_USERNAME" ]]; then
   echo "Username cannot be empty." >&2
