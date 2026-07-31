@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Install or update a protected log-forwarding agent on one node.
-# Usage: curl -fsSL <raw-url> | sudo bash
+# Usage (as root): curl -fsSL <raw-url> | bash
 set -Eeuo pipefail
 
 NODE_NAME=""
@@ -12,7 +12,7 @@ readonly INGEST_URL="${INGEST_URL:-https://cabinet.roxelalex.xyz}"
 readonly INGEST_PATH="${INGEST_PATH:-/node-logs/loki/api/v1/push}"
 
 if [[ $EUID -ne 0 ]]; then
-  echo "Run this script as root (sudo)." >&2
+  echo "Run this script as root." >&2
   exit 1
 fi
 if ! command -v docker >/dev/null 2>&1; then

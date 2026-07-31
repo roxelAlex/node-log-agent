@@ -8,7 +8,7 @@ central endpoint.
 Run on the node as root:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/roxelAlex/node-log-agent/main/install-log-agent.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/roxelAlex/node-log-agent/main/install-log-agent.sh | bash
 ```
 
 The installer detects the mounted source log automatically, then asks only for
