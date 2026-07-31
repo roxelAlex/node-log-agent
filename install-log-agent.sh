@@ -11,7 +11,7 @@ readonly ENV_PATH="${CONFIG_DIR}/agent.env"
 readonly INGEST_URL="${INGEST_URL:-https://cabinet.roxelalex.xyz}"
 readonly INGEST_PATH="${INGEST_PATH:-/node-logs/loki/api/v1/push}"
 
-if [[ $EUID -ne 0 ]]; then
+if [[ "$(id -u)" -ne 0 ]]; then
   echo "Run this script as root." >&2
   exit 1
 fi
@@ -67,14 +67,14 @@ ensure_host_log_mount() {
   compose_dir="$(dirname "$compose_override")"
   host_log_dir="/opt/node-log-agent/${compose_service}-logs"
   install -d -m 0755 "$host_log_dir"
-  cp -- "$compose_override" "${compose_override}.node-log-agent.bak"
+  cp -- "$compose_override" "${compose_override}.node-log-agent.bak" || return 1
   yq_expression=".services.\"${compose_service}\".volumes = ((.services.\"${compose_service}\".volumes // []) + [\"${host_log_dir}:$(dirname "$container_log_file")\"] | unique)"
   echo "Adding the host log mount and recreating service ${compose_service}." >&2
-  docker run --rm -v "${compose_dir}:/work" -w /work mikefarah/yq:4.44.3 -i "$yq_expression" "$(basename "$compose_override")" >&2
+  docker run --rm --user 0:0 -v "${compose_dir}:/work" -w /work mikefarah/yq:4.44.3 -i "$yq_expression" "$(basename "$compose_override")" >&2 || return 1
   for compose_file in "${compose_file_list[@]}"; do
     compose_args+=(-f "$compose_file")
   done
-  docker compose -p "$compose_project" "${compose_args[@]}" up -d --force-recreate "$compose_service" >&2
+  docker compose -p "$compose_project" "${compose_args[@]}" up -d --force-recreate "$compose_service" >&2 || return 1
   printf '%s\n' "$host_log_dir"
 }
 
@@ -86,7 +86,10 @@ IFS='|' read -r TARGET_CONTAINER CONTAINER_LOG_FILE COMPOSE_FILES COMPOSE_SERVIC
 if SOURCE_LOG_DIR="$(detect_source_log_dir "$TARGET_CONTAINER")"; then
   echo "Detected source log directory: ${SOURCE_LOG_DIR}"
 else
-  SOURCE_LOG_DIR="$(ensure_host_log_mount "$TARGET_CONTAINER" "$CONTAINER_LOG_FILE" "$COMPOSE_FILES" "$COMPOSE_SERVICE" "$COMPOSE_PROJECT")"
+  if ! SOURCE_LOG_DIR="$(ensure_host_log_mount "$TARGET_CONTAINER" "$CONTAINER_LOG_FILE" "$COMPOSE_FILES" "$COMPOSE_SERVICE" "$COMPOSE_PROJECT")"; then
+    echo "Could not update the Compose override; the service was not changed." >&2
+    exit 1
+  fi
   for _ in {1..20}; do
     [[ -r "$SOURCE_LOG_DIR/current" ]] && break
     sleep 1
