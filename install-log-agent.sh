@@ -134,7 +134,7 @@ docker run -d --name "$AGENT_NAME" --restart unless-stopped \
   -v "$CONFIG_PATH:/etc/vector/vector.yaml:ro" \
   "${RUNTIME_ARGS[@]}" \
   timberio/vector:0.39.0-alpine \
-  --config /etc/vector/vector.yaml --require-healthy
+  --config /etc/vector/vector.yaml --require-healthy true
 
 sleep 2
 if ! docker ps --format '{{.Names}}' | grep -qx "$AGENT_NAME"; then
